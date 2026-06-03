@@ -1,0 +1,426 @@
+{
+  "name": "AI Trend Radar – Opportunity Discovery System",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "id": "f27337d8-0361-4eb4-961f-7b5cdd47b890",
+      "name": "⏰ Daily Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -464,
+        80
+      ],
+      "notes": "Runs every 24 hours automatically. You can change the interval to weekly if needed."
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss/search?q=AI+automation+tools+2025&hl=en-US&gl=US&ceid=US:en",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "7b9dec9e-49dc-419b-b12e-abd3b7069f4c",
+      "name": "📡 Fetch AI Tools News",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -192,
+        -112
+      ],
+      "notes": "Fetches Google News RSS for AI Automation Tools"
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss/search?q=n8n+workflow+automation+chatbot&hl=en-US&gl=US&ceid=US:en",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "08a945ea-7e6c-41b1-bd35-b4030c5b1979",
+      "name": "🔧 Fetch n8n & Chatbot Trends",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -64,
+        256
+      ],
+      "notes": "Fetches Google News RSS for n8n and chatbot news"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse RSS XML and extract top headlines\nconst items = [];\n\nfor (const input of $input.all()) {\n  const body = input.json.data || '';\n  \n  // Extract <item> blocks from RSS XML\n  const itemMatches = body.match(/<item>[\\s\\S]*?<\\/item>/g) || [];\n  \n  for (const item of itemMatches.slice(0, 5)) {\n    // Extract title\n    const titleMatch = item.match(/<title><!\\[CDATA\\[(.+?)\\]\\]><\\/title>/) ||\n                       item.match(/<title>(.+?)<\\/title>/);\n    // Extract link\n    const linkMatch = item.match(/<link>(.+?)<\\/link>/) ||\n                      item.match(/<guid[^>]*>(.+?)<\\/guid>/);\n    // Extract pub date\n    const dateMatch = item.match(/<pubDate>(.+?)<\\/pubDate>/);\n    \n    if (titleMatch) {\n      items.push({\n        title: titleMatch[1].trim(),\n        link: linkMatch ? linkMatch[1].trim() : '',\n        date: dateMatch ? dateMatch[1].trim() : new Date().toUTCString()\n      });\n    }\n  }\n}\n\n// Return combined headlines as single item for Gemini\nreturn [{\n  json: {\n    headlines: items,\n    headlineText: items.map((h, i) => `${i+1}. ${h.title}`).join('\\n'),\n    fetchedAt: new Date().toISOString(),\n    totalCount: items.length\n  }\n}];"
+      },
+      "id": "7f8e772f-a917-4fca-8ba7-bce62136f454",
+      "name": "🧹 Parse & Clean RSS Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        32
+      ],
+      "notes": "Extracts titles and links from raw RSS XML. Grabs top 5 from each feed."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract Gemini response text\nconst response = $input.first().json;\n\nlet reportText = '';\ntry {\n  reportText = response.candidates[0].content.parts[0].text;\n} catch(e) {\n  reportText = 'Error extracting Gemini response: ' + JSON.stringify(response);\n}\n\nconst today = new Date();\nconst dateStr = today.toLocaleDateString('en-US', { \n  weekday: 'long', \n  year: 'numeric', \n  month: 'long', \n  day: 'numeric' \n});\n\nreturn [{\n  json: {\n    reportDate: dateStr,\n    reportText: reportText,\n    reportMarkdown: `# 🎯 AI Trend Radar Report\\n**Date:** ${dateStr}\\n\\n${reportText}`,\n    timestamp: today.toISOString()\n  }\n}];"
+      },
+      "id": "08cc78c2-3477-4c29-9714-ac7b484448a3",
+      "name": "📋 Extract Report Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        64
+      ],
+      "notes": "Parses Gemini's JSON response and formats the report"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1nC_gFeAVkJxCFdl6-lV2_2Ens4eGQqPs_ae4Ud2jzVI",
+          "mode": "list",
+          "cachedResultName": "Trends Reports",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1nC_gFeAVkJxCFdl6-lV2_2Ens4eGQqPs_ae4Ud2jzVI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1nC_gFeAVkJxCFdl6-lV2_2Ens4eGQqPs_ae4Ud2jzVI/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $json.timestamp }}",
+            "Date": "={{ $json.reportDate }}",
+            "Reports": "={{ $json.reportMarkdown }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Reports",
+              "displayName": "Reports",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "14da054e-6e93-4fed-adc2-55647042011b",
+      "name": "📊 Save to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1008,
+        -64
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aoLjf85Pgy4Ubnxi",
+          "name": "Google Sheets OAuth2 API"
+        }
+      },
+      "notes": "SETUP REQUIRED: Replace YOUR_GOOGLE_SHEET_ID_HERE with your Sheet ID from the URL. Create a sheet named 'Trend Reports' with columns: Date, Report, Timestamp."
+    },
+    {
+      "parameters": {
+        "sendTo": "khmuhammadghulamhussain0@gmail.com",
+        "subject": "=🎯 AI Trend Radar Report – {{ $json.reportDate }}",
+        "emailType": "text",
+        "message": "=AI TREND RADAR REPORT\n{{ $json.reportDate }}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n{{ $json.reportText }}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nGenerated by your AI Trend Radar Workflow in n8n\nPowered by Gemini 1.5 Flash + Google News RSS",
+        "options": {}
+      },
+      "id": "ae412017-909c-48fa-9145-589d4eac1c0d",
+      "name": "📧 Send Gmail Digest",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1024,
+        176
+      ],
+      "webhookId": "e4af411f-aa25-4b31-a63e-b5d043970c6d",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "LHxscjSPfCCRJhns",
+          "name": "Gmail OAuth2 API"
+        }
+      },
+      "notes": "SETUP REQUIRED: Change 'your-email@gmail.com' to your actual email. Connect your Gmail account in credentials."
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss/search?q=AI+freelance+opportunities+2025&hl=en-US&gl=US&ceid=US:en",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "ec5ab308-50b7-41e5-aafe-165489969058",
+      "name": "💼Fetch Freelance AI Trends",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -176,
+        80
+      ],
+      "notes": "Fetches Google News RSS for AI freelance market trends"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 3,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        128,
+        48
+      ],
+      "id": "84c64386-dec0-4e99-9095-353694e11f52",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze these AI trends headlines and find top freelance opportunities:\n\n{{ $json.headlineText }}\n\nGive me:\n1. Top 3 opportunities with Fiverr gig ideas\n2. Market signals\n3. This week action item\n4. One trend to avoid\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        464,
+        32
+      ],
+      "id": "2bcd07e3-0163-4265-b8e2-00c3e27fc949",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "meta-llama/llama-3-8b-instruct",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        496,
+        288
+      ],
+      "id": "ac31e7a6-2615-44a2-9617-1142062ad6ea",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "qBfwMRyc3GbtKkeS",
+          "name": "OpenRouter account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "⏰ Daily Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "📡 Fetch AI Tools News",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "💼Fetch Freelance AI Trends",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔧 Fetch n8n & Chatbot Trends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📡 Fetch AI Tools News": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧹 Parse & Clean RSS Data": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Extract Report Text": {
+      "main": [
+        [
+          {
+            "node": "📊 Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "📧 Send Gmail Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💼Fetch Freelance AI Trends": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "🔧 Fetch n8n & Chatbot Trends": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "🧹 Parse & Clean RSS Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "📋 Extract Report Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Save to Google Sheets": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f2e2a121-46fd-4ede-805b-ca9ba2ef14bf",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0e61c90a938d828ddaafd0fc7cee05e7951a0190b73d0a5cca3e7e26893e3a32"
+  },
+  "id": "RvCAEMd1E1shvElP",
+  "tags": [
+    {
+      "updatedAt": "2026-06-02T12:49:49.260Z",
+      "createdAt": "2026-06-02T12:49:49.260Z",
+      "id": "H12uSoy5drB2YONQ",
+      "name": "Freelance"
+    },
+    {
+      "updatedAt": "2026-06-02T12:49:49.189Z",
+      "createdAt": "2026-06-02T12:49:49.189Z",
+      "id": "U1qbv3Mape1njvn4",
+      "name": "Gemini"
+    },
+    {
+      "updatedAt": "2026-06-01T04:13:47.905Z",
+      "createdAt": "2026-06-01T04:13:47.905Z",
+      "id": "e7OOXPOIRsuwzChL",
+      "name": "AI"
+    },
+    {
+      "updatedAt": "2026-06-02T12:49:49.221Z",
+      "createdAt": "2026-06-02T12:49:49.221Z",
+      "id": "fRIUU3H9bEn9Or6m",
+      "name": "Trends"
+    }
+  ]
+}
